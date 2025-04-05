@@ -8,6 +8,8 @@ const searchResults = ref([]);
 const showResults = ref(false);
 const page = usePage();
 
+const isAdmin = computed(() => page.props.auth?.user?.role === "admin");
+
 const fetchBooks = async (query) => {
     try {
         if (!query.trim()) {
@@ -38,6 +40,7 @@ const isAuthenticated = computed(() => !!page.props.auth?.user);
 </script>
 
 <template>
+    <Toast />
     <header
         class="w-full flex items-center justify-between py-4 px-6 bg-white shadow"
     >
@@ -89,13 +92,29 @@ const isAuthenticated = computed(() => !!page.props.auth?.user);
         <nav v-if="canLogin" class="flex items-center gap-3 whitespace-nowrap">
             <Link
                 v-if="isAuthenticated"
+                :href="route('books.index')"
+                class="rounded-md px-3 py-1 text-black text-sm ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
+            >
+                Books
+            </Link>
+
+            <Link
+                v-if="isAuthenticated && isAdmin"
+                :href="route('books.create')"
+                class="rounded-md px-3 py-1 text-black text-sm ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
+            >
+                Add Book
+            </Link>
+
+            <Link
+                v-if="isAuthenticated"
                 :href="route('dashboard')"
                 class="rounded-md px-3 py-1 text-black text-sm ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
             >
                 Dashboard
             </Link>
 
-            <template v-else>
+            <template v-else-if="!isAuthenticated">
                 <Link
                     v-if="props.canLogin"
                     :href="route('login')"

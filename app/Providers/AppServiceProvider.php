@@ -4,6 +4,9 @@ namespace App\Providers;
 
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Gate;
+use App\Policies\BookPolicy;
+use App\Models\Book;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -12,7 +15,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        Gate::policy(Book::class, BookPolicy::class);
     }
 
     /**

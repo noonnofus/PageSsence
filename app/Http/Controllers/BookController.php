@@ -31,6 +31,16 @@ class BookController extends Controller
         ]);
     }
     
+    public function findByName(Request $request) {
+        $title = $request->query('title', '');
+    
+        $books = Book::when($title, function ($query, $title) {
+            return $query->where('title', 'like', "%{$title}%");
+        })->get();
+    
+        return response()->json($books);
+    }
+
     public function create() {
         Gate::authorize('viewAny', Book::class);
 

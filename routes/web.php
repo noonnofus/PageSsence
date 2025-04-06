@@ -31,6 +31,9 @@ Route::middleware('auth')->group(function () {
 
 // routes/web.php
 Route::middleware(['auth'])->prefix('api')->group(function () {
+    //search bar
+    Route::get('/books/search', [BookController::class, 'findByName']);
+
     Route::post('/book/create', [BookController::class, 'store']);
 
     Route::post('/book/save', [BookController::class, 'save']);

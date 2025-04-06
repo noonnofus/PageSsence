@@ -6,6 +6,16 @@ import Dialog from "primevue/dialog";
 import { useToast } from "primevue/usetoast";
 import { usePage } from "@inertiajs/vue3";
 import Paginator from "primevue/paginator";
+import { onMounted } from "vue";
+
+onMounted(() => {
+    const currentUrl = new URL(window.location.href);
+    const bookId = currentUrl.searchParams.get("show");
+
+    if (bookId) {
+        openBookModal(bookId);
+    }
+});
 
 const page = usePage();
 const toast = useToast();
@@ -47,6 +57,10 @@ const openBookModal = async (bookId) => {
 const closeBookModal = () => {
     showModal.value = false;
     selectedBook.value = null;
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("show");
+    window.history.replaceState({}, "", url.pathname);
 };
 
 const saveBook = async () => {

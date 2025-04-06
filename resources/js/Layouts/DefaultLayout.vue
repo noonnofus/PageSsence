@@ -7,8 +7,6 @@ const searchQuery = ref("");
 const searchResults = ref([]);
 const showResults = ref(false);
 const page = usePage();
-const url = computed(() => page.url);
-const isBooksPage = computed(() => url.value === "/books");
 
 const isAdmin = computed(() => page.props.auth?.user?.role === "admin");
 
@@ -53,7 +51,6 @@ const isAuthenticated = computed(() => !!page.props.auth?.user);
         <div class="flex-1 mx-4">
             <div class="input-group input-group-sm w-full">
                 <input
-                    v-if="isBooksPage"
                     type="search"
                     class="form-control form-control-sm w-full rounded px-3 py-1 text-sm"
                     placeholder="Search Books"
@@ -71,7 +68,7 @@ const isAuthenticated = computed(() => !!page.props.auth?.user);
                         :key="book.id"
                         class="px-3 py-2 hover:bg-gray-200"
                     >
-                        <Link :href="`/book/${book.id}`" class="block">
+                        <Link :href="`/books?show=${book.id}`" class="block">
                             {{ book.title }}
                         </Link>
                     </li>

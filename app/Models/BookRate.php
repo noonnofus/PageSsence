@@ -14,4 +14,9 @@ class BookRate extends Model
         'user_id', 
         'rating',
     ];
+
+    public function book()
+    {
+        return $this->belongsTo(Book::class);
+    }
 }

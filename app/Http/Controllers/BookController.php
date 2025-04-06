@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Models\Book;
 use App\Models\UserBook;
+use App\Models\BookRate;
 
 class BookController extends Controller
 {
@@ -114,6 +115,73 @@ class BookController extends Controller
         return response()->json([
             'message' => 'Book saved successfully!',
         ], 201);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $book = Book::findOrFail($id);
+
+        if (Auth::user()->role !== 'admin') {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $validated = $request->validate([
+            'title' => 'required|string',
+            'author' => 'required|string',
+            'genre' => 'nullable|string',
+            'publication_year' => 'nullable|integer',
+            'price' => 'nullable|numeric',
+            'description' => 'nullable|string',
+        ]);
+
+        $book->update($validated);
+
+        return response()->json(['message' => 'Book updated successfully']);
+    }
+
+    public function unsave(Book $book)
+    {
+        $user = auth()->user();
+
+        $user->savedBooks()->detach($book->id);
+
+        return response()->json(['message' => 'Book unsaved']);
+    }
+
+    public function getAverageRating($id)
+    {
+        $book = Book::with('ratings')->findOrFail($id);
+        $average = round($book->ratings->avg('rating'), 1);
+
+        return response()->json([
+            'average' => $average,
+        ]);
+    }
+
+    public function storeRate(Request $request)
+    {
+        $request->validate([
+            'book_id' => 'required|exists:books,id',
+            'rating' => 'required|integer|min:1|max:5',
+        ]);
+    
+        $userId = auth()->id();
+    
+        $existingRate = BookRate::where('user_id', $userId)
+            ->where('book_id', $request->book_id)
+            ->first();
+    
+        if ($existingRate) {
+            return response()->json(['message' => 'You have already rated this book.'], 200);
+        }
+    
+        BookRate::create([
+            'user_id' => $userId,
+            'book_id' => $request->book_id,
+            'rating' => $request->rating,
+        ]);
+    
+        return response()->json(['message' => 'Thanks for rating!']);
     }
 
 }

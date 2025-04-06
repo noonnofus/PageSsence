@@ -37,6 +37,14 @@ Route::middleware(['auth'])->prefix('api')->group(function () {
     Route::post('/book/create', [BookController::class, 'store']);
 
     Route::post('/book/save', [BookController::class, 'save']);
+
+    Route::put('/book/update/{id}', [BookController::class, 'update']);
+
+    Route::delete('/book/unsave/{book}', [BookController::class, 'unsave']);
+
+    Route::get('/book/{id}/rating', [BookController::class, 'getAverageRating']);
+
+    Route::post('/book/rate', [BookController::class, 'storeRate']);
 });
 
 

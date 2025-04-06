@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import { Head } from "@inertiajs/vue3";
+import { Head, usePage } from "@inertiajs/vue3";
 import Dialog from "primevue/dialog";
 import { ref } from "vue";
 
@@ -9,6 +9,7 @@ const props = defineProps({
     username: String,
 });
 
+const page = usePage();
 const showModal = ref(false);
 const selectedBook = ref(null);
 
@@ -20,6 +21,28 @@ const openBookModal = async (bookId) => {
         showModal.value = true;
     } catch (error) {
         console.error("Failed to fetch book:", error);
+    }
+};
+
+const deleteBook = async (bookId) => {
+    try {
+        const res = await fetch(`/api/book/unsave/${bookId}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers: {
+                "X-CSRF-TOKEN": page.props.csrf_token,
+                // prettier-ignore
+                "Accept": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+            },
+        });
+
+        if (!res.ok) throw new Error("Failed to unsave book");
+
+        const index = props.savedBooks.findIndex((b) => b.id === bookId);
+        if (index !== -1) props.savedBooks.splice(index, 1);
+    } catch (err) {
+        console.error("Error while unsaving book:", err);
     }
 };
 
@@ -64,6 +87,17 @@ const closeBookModal = () => {
                                     Year: {{ book.publication_year }}<br />
                                     Price: ${{ book.price }}
                                 </p>
+                            </template>
+                            <template #footer>
+                                <div class="flex justify-end px-2 pb-2">
+                                    <Button
+                                        icon="pi pi-trash"
+                                        label="Unsave"
+                                        class="text-sm"
+                                        severity="danger"
+                                        @click.stop="deleteBook(book.id)"
+                                    />
+                                </div>
                             </template>
                         </Card>
                     </div>

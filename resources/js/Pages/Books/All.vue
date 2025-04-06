@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { Head } from "@inertiajs/vue3";
 import DefaultLayout from "@/Layouts/DefaultLayout.vue";
 import Dialog from "primevue/dialog";
@@ -7,6 +7,8 @@ import { useToast } from "primevue/usetoast";
 import { usePage } from "@inertiajs/vue3";
 import Paginator from "primevue/paginator";
 import { onMounted } from "vue";
+import Rate from "@/Components/Rate.vue";
+import AddRate from "@/Components/AddRate.vue";
 
 onMounted(() => {
     const currentUrl = new URL(window.location.href);
@@ -16,6 +18,8 @@ onMounted(() => {
         openBookModal(bookId);
     }
 });
+
+const isAdmin = computed(() => page.props.auth?.user?.role === "admin");
 
 const page = usePage();
 const toast = useToast();
@@ -32,15 +36,46 @@ const todaysBook = props.books.length > 0 ? props.books[0] : null;
 
 const showModal = ref(false);
 const selectedBook = ref(null);
+const averageRating = ref(null);
+const userRating = ref(0);
+
+const searchQuery = ref("");
+
+watch(searchQuery, () => {
+    first.value = 0;
+});
 
 const rows = 10;
 const first = ref(0);
-const paginatedBooks = computed(() => {
-    return props.allBook.slice(first.value, first.value + rows);
+
+const editModal = ref(false);
+const editBook = ref({
+    id: null,
+    title: "",
+    author: "",
+    genre: "",
+    publication_year: "",
+    price: "",
+    description: "",
 });
+
+const openEditModal = (book) => {
+    editBook.value = { ...book };
+    editModal.value = true;
+};
 
 const onPageChange = (event) => {
     first.value = event.first;
+};
+
+const fetchAverageRating = async (bookId) => {
+    try {
+        const res = await fetch(`/api/book/${bookId}/rating`);
+        const data = await res.json();
+        averageRating.value = data.average;
+    } catch (err) {
+        console.error("Error getting star rate:", err);
+    }
 };
 
 const openBookModal = async (bookId) => {
@@ -48,11 +83,26 @@ const openBookModal = async (bookId) => {
         const response = await fetch(`/api/book/${bookId}`);
         const data = await response.json();
         selectedBook.value = data;
+        await fetchAverageRating(bookId);
         showModal.value = true;
     } catch (error) {
         console.error("Failed to fetch book:", error);
     }
 };
+
+const filteredBooks = computed(() => {
+    if (!searchQuery.value.trim()) return props.allBook;
+
+    return props.allBook.filter((book) =>
+        [book.title, book.author].some((field) =>
+            field?.toLowerCase().includes(searchQuery.value.toLowerCase())
+        )
+    );
+});
+
+const paginatedBooks = computed(() => {
+    return filteredBooks.value.slice(first.value, first.value + rows);
+});
 
 const closeBookModal = () => {
     showModal.value = false;
@@ -61,6 +111,81 @@ const closeBookModal = () => {
     const url = new URL(window.location.href);
     url.searchParams.delete("show");
     window.history.replaceState({}, "", url.pathname);
+};
+
+const updateBook = async () => {
+    try {
+        const res = await fetch(`/api/book/update/${editBook.value.id}`, {
+            method: "PUT",
+            credentials: "include",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": page.props.csrf_token,
+                Accept: "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+            },
+            body: JSON.stringify(editBook.value),
+        });
+
+        if (!res.ok) throw new Error("Failed to update book");
+
+        toast.add({
+            severity: "success",
+            summary: "Book updated!",
+            life: 3000,
+        });
+
+        editModal.value = false;
+        location.reload();
+    } catch (err) {
+        toast.add({
+            severity: "error",
+            summary: "Update failed",
+            detail: err.message,
+            life: 4000,
+        });
+    }
+};
+
+const submitRating = async () => {
+    if (!userRating.value || !selectedBook.value) return;
+
+    try {
+        const res = await fetch("/api/book/rate", {
+            method: "POST",
+            credentials: "include",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": page.props.csrf_token,
+                Accept: "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+            },
+            body: JSON.stringify({
+                book_id: selectedBook.value.id,
+                rating: userRating.value,
+            }),
+        });
+
+        if (!res.ok) throw new Error("Rating submission failed");
+
+        const data = await res.json();
+
+        toast.add({
+            severity: "success",
+            summary: data.message,
+            life: 3000,
+        });
+
+        await fetchAverageRating(selectedBook.value.id);
+        userRating.value = 0;
+    } catch (error) {
+        toast.add({
+            severity: "error",
+            summary: "Rating failed",
+            detail: error.message,
+            life: 3000,
+        });
+    }
 };
 
 const saveBook = async () => {
@@ -141,6 +266,15 @@ const saveBook = async () => {
                             }}</span>
                         </p>
                     </template>
+                    <template #footer v-if="isAdmin">
+                        <Button
+                            icon="pi pi-pencil"
+                            label="Edit"
+                            class="px-2 py-1 text-sm"
+                            severity="warning"
+                            @click.stop="openEditModal(book)"
+                        />
+                    </template>
                 </Card>
             </template>
         </Carousel>
@@ -188,15 +322,28 @@ const saveBook = async () => {
                                 outlined
                                 class="px-3 py-1 text-sm"
                             />
-                            <Button
-                                label="Save"
-                                icon="pi pi-bookmark"
-                                class="px-3 py-1 text-sm"
-                            />
+                            <div v-if="isAdmin">
+                                <Button
+                                    icon="pi pi-pencil"
+                                    label="Edit"
+                                    class="px-2 py-1 text-sm"
+                                    severity="warning"
+                                    @click.stop="openEditModal(book)"
+                                />
+                            </div>
                         </div>
                     </template>
                 </Card>
             </div>
+        </div>
+        <h2 class="text-4xl font-bold mt-12 mb-6 text-center">All Books</h2>
+        <div class="px-6 mt-6 flex justify-center">
+            <input
+                type="text"
+                v-model="searchQuery"
+                class="w-full md:w-1/2 border border-gray-300 rounded px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Search by title or author"
+            />
         </div>
         <div
             class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10 px-6"
@@ -220,13 +367,22 @@ const saveBook = async () => {
                         Price: ${{ book.price }}
                     </p>
                 </template>
+                <template #footer v-if="isAdmin">
+                    <Button
+                        icon="pi pi-pencil"
+                        label="Edit"
+                        class="px-2 py-1 text-sm"
+                        severity="warning"
+                        @click.stop="openEditModal(book)"
+                    />
+                </template>
             </Card>
         </div>
 
         <div class="flex justify-center mt-8">
             <Paginator
                 :rows="rows"
-                :totalRecords="props.allBook.length"
+                :totalRecords="filteredBooks.length"
                 :first="first"
                 @page="onPageChange"
                 template="PrevPageLink PageLinks NextPageLink"
@@ -242,17 +398,16 @@ const saveBook = async () => {
             class="w-full max-w-6xl"
             @hide="closeBookModal"
         >
+            <button
+                @click="closeBookModal"
+                class="absolute top-4 right-4 text-gray-500 hover:text-black text-xl"
+            >
+                &times;
+            </button>
             <div
                 v-if="selectedBook"
                 class="relative flex flex-col md:flex-row gap-6 p-6 bg-white rounded shadow-lg"
             >
-                <button
-                    @click="closeBookModal"
-                    class="absolute top-4 right-4 text-gray-500 hover:text-black text-xl"
-                >
-                    &times;
-                </button>
-
                 <div class="w-full md:w-1/2 flex flex-col gap-4">
                     <h2 class="text-3xl font-bold">{{ selectedBook.title }}</h2>
                     <p class="text-md text-gray-600">
@@ -316,6 +471,85 @@ const saveBook = async () => {
                     </div>
                 </div>
             </div>
+            <div
+                class="mt-4 flex flex-col md:flex-row items-center justify-between gap-6"
+            >
+                <div class="flex items-center gap-2">
+                    <Rate
+                        v-if="averageRating !== null"
+                        :rating="averageRating"
+                    />
+                </div>
+
+                <div class="flex flex-col items-center md:items-end">
+                    <h4 class="font-semibold mb-1">Rate this book:</h4>
+                    <AddRate v-model="userRating" />
+                    <p class="text-sm text-gray-500 mt-1">
+                        {{
+                            userRating ? `${userRating} / 5` : "Select a rating"
+                        }}
+                    </p>
+                    <Button
+                        label="Submit Rating"
+                        icon="pi pi-check"
+                        class="mt-2 px-3 py-1 text-sm"
+                        severity="info"
+                        @click="submitRating"
+                        :disabled="!userRating"
+                    />
+                </div>
+            </div>
+        </Dialog>
+        <Dialog
+            v-model:visible="editModal"
+            modal
+            class="w-full max-w-3xl"
+            header="Edit Book"
+            @hide="editModal = false"
+        >
+            <div class="grid gap-4">
+                <div class="flex flex-col">
+                    <label>Title</label>
+                    <InputText v-model="editBook.title" />
+                </div>
+                <div class="flex flex-col">
+                    <label>Author</label>
+                    <InputText v-model="editBook.author" />
+                </div>
+                <div class="flex flex-col">
+                    <label>Genre</label>
+                    <InputText v-model="editBook.genre" />
+                </div>
+                <div class="flex flex-col">
+                    <label>Publication Year</label>
+                    <InputNumber v-model="editBook.publication_year" />
+                </div>
+                <div class="flex flex-col">
+                    <label>Price</label>
+                    <InputNumber
+                        v-model="editBook.price"
+                        mode="currency"
+                        currency="USD"
+                    />
+                </div>
+                <div class="flex flex-col">
+                    <label>Description</label>
+                    <Textarea
+                        v-model="editBook.description"
+                        autoResize
+                        rows="3"
+                    />
+                </div>
+            </div>
+
+            <template #footer>
+                <Button
+                    label="Cancel"
+                    @click="editModal = false"
+                    class="p-button-text"
+                />
+                <Button label="Save Changes" @click="updateBook" />
+            </template>
         </Dialog>
     </DefaultLayout>
 </template>

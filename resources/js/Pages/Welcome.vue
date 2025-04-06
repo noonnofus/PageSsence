@@ -1,5 +1,6 @@
 <script setup>
 import { Head } from "@inertiajs/vue3";
+import { Link } from "@inertiajs/vue3";
 import DefaultLayout from "@/Layouts/DefaultLayout.vue";
 
 defineProps({
@@ -63,23 +64,30 @@ defineProps({
                                         </div>
 
                                         <div class="pt-3 sm:pt-5 lg:pt-0">
-                                            <h2
-                                                class="text-xl font-semibold text-black dark:text-white"
+                                            <Link
+                                                :href="'/books'"
+                                                class="block"
                                             >
-                                                Discovery
-                                            </h2>
+                                                <h2
+                                                    class="text-xl font-semibold text-black dark:text-white"
+                                                >
+                                                    Discovery
+                                                </h2>
 
-                                            <p class="mt-4 text-sm/relaxed">
-                                                PageSsence helps you discover
-                                                the perfect book tailored to
-                                                your taste. Whether you're an
-                                                avid reader or just starting
-                                                your literary journey, our
-                                                platform guides you to books
-                                                that match your interests,
-                                                ensuring an enjoyable and
-                                                personalized reading experience.
-                                            </p>
+                                                <p class="mt-4 text-sm/relaxed">
+                                                    PageSsence helps you
+                                                    discover the perfect book
+                                                    tailored to your taste.
+                                                    Whether you're an avid
+                                                    reader or just starting your
+                                                    literary journey, our
+                                                    platform guides you to books
+                                                    that match your interests,
+                                                    ensuring an enjoyable and
+                                                    personalized reading
+                                                    experience.
+                                                </p>
+                                            </Link>
                                         </div>
                                     </div>
 

@@ -17,4 +17,9 @@ class Book extends Model
         'price',
         'publication_year',
     ];
+
+    public function savedByUsers()
+    {
+        return $this->belongsToMany(User::class, 'user_books');
+    }
 }

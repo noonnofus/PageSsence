@@ -24,6 +24,7 @@ import Toast from "primevue/toast";
 import { Form } from "@primevue/forms";
 import AutoComplete from "primevue/autocomplete";
 import Dropdown from "primevue/dropdown";
+import Paginator from "primevue/paginator";
 
 const appName = import.meta.env.VITE_APP_NAME || "Laravel";
 
@@ -59,6 +60,7 @@ createInertiaApp({
             .component("Form", Form)
             .component("AutoComplete", AutoComplete)
             .component("Dropdown", Dropdown)
+            .component("Paginator", Paginator)
             .mount(el);
     },
     progress: {

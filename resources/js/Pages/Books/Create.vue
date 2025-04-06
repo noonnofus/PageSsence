@@ -5,7 +5,9 @@ import { ref } from "vue";
 import { zodResolver } from "@primevue/forms/resolvers/zod";
 import { useToast } from "primevue/usetoast";
 import { z } from "zod";
+import { usePage } from "@inertiajs/vue3";
 
+const page = usePage();
 const toast = useToast();
 const initialValues = ref({
     title: "",
@@ -55,9 +57,13 @@ const onFormSubmit = async ({ valid, values }) => {
     try {
         const res = await fetch("/api/book/create", {
             method: "POST",
-            // credentials: "include",
+            credentials: "include",
             headers: {
                 "Content-Type": "application/json",
+                "X-CSRF-TOKEN": page.props.csrf_token,
+                // prettier-ignore
+                "Accept": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
             },
             body: JSON.stringify(values),
         });

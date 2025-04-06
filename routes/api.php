@@ -11,6 +11,7 @@ Route::get('/books', [BookController::class, 'index']);
 Route::get('/books/search', [BookController::class, 'findByName']);
 
 Route::get('/book/{id}', [BookController::class, 'show']); 
-Route::post('/book/create', [BookController::class, 'store']);
+
+
 Route::put('/books/{id}', [BookController::class, 'update']);
 Route::delete('/books/{id}', [BookController::class, 'destroy']);

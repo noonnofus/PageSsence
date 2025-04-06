@@ -1,21 +1,37 @@
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { Head } from "@inertiajs/vue3";
 import DefaultLayout from "@/Layouts/DefaultLayout.vue";
 import Dialog from "primevue/dialog";
+import { useToast } from "primevue/usetoast";
+import { usePage } from "@inertiajs/vue3";
+import Paginator from "primevue/paginator";
 
+const page = usePage();
+const toast = useToast();
 const props = defineProps({
     canLogin: Boolean,
     canRegister: Boolean,
     laravelVersion: String,
     phpVersion: String,
     books: Array,
+    allBook: Array,
 });
 
 const todaysBook = props.books.length > 0 ? props.books[0] : null;
 
 const showModal = ref(false);
 const selectedBook = ref(null);
+
+const rows = 10;
+const first = ref(0);
+const paginatedBooks = computed(() => {
+    return props.allBook.slice(first.value, first.value + rows);
+});
+
+const onPageChange = (event) => {
+    first.value = event.first;
+};
 
 const openBookModal = async (bookId) => {
     try {
@@ -33,15 +49,49 @@ const closeBookModal = () => {
     selectedBook.value = null;
 };
 
-const saveBook = () => {
-    // need to make a logic to store bookId to save.
-    console.log("Saved book:", selectedBook.value);
+const saveBook = async () => {
+    if (!selectedBook) return;
+
+    try {
+        const res = await fetch("/api/book/save", {
+            method: "POST",
+            credentials: "include",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": page.props.csrf_token,
+                // prettier-ignore
+                "Accept": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+            },
+            body: JSON.stringify({ bookId: selectedBook.value.id }),
+        });
+
+        console.log(await res);
+
+        if (!res.ok) throw new Error("Failed to save book");
+
+        toast.add({
+            severity: "success",
+            summary:
+                "Book saved successfully! You can view on the dashboard page.",
+            life: 3000,
+        });
+    } catch (error) {
+        console.error(error);
+        toast.add({
+            severity: "error",
+            summary: "Failed to save book.",
+            detail: error.message,
+            life: 4000,
+        });
+    }
 };
 </script>
 
 <template>
     <Head title="Books" />
     <DefaultLayout :canLogin="canLogin" :canRegister="canRegister">
+        <h2 class="text-4xl font-bold mb-6">Latest Books</h2>
         <Carousel
             :value="props.books"
             :numVisible="4"
@@ -133,6 +183,40 @@ const saveBook = () => {
                     </template>
                 </Card>
             </div>
+        </div>
+        <div
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10 px-6"
+        >
+            <Card
+                v-for="book in paginatedBooks"
+                :key="book.id"
+                @click="openBookModal(book.id)"
+                class="cursor-pointer shadow-md border border-gray-200 rounded-lg hover:shadow-lg transition"
+            >
+                <template #title>
+                    <h3 class="font-semibold text-lg truncate">
+                        {{ book.title }}
+                    </h3>
+                </template>
+                <template #content>
+                    <p class="text-sm text-gray-600 line-clamp-3">
+                        by <span class="underline">{{ book.author }}</span
+                        ><br />
+                        Genre: {{ book.genre }}<br />
+                        Price: ${{ book.price }}
+                    </p>
+                </template>
+            </Card>
+        </div>
+
+        <div class="flex justify-center mt-8">
+            <Paginator
+                :rows="rows"
+                :totalRecords="props.allBook.length"
+                :first="first"
+                @page="onPageChange"
+                template="PrevPageLink PageLinks NextPageLink"
+            />
         </div>
         <Dialog
             v-model:visible="showModal"

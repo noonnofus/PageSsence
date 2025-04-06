@@ -1,11 +1,15 @@
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import Dropdown from "@/Components/Dropdown.vue";
 import DropdownLink from "@/Components/DropdownLink.vue";
 import NavLink from "@/Components/NavLink.vue";
 import ResponsiveNavLink from "@/Components/ResponsiveNavLink.vue";
-import { Link } from "@inertiajs/vue3";
+import { Link, usePage } from "@inertiajs/vue3";
+
+const page = usePage();
+const isAdmin = computed(() => page.props.auth?.user?.role === "admin");
+const isAuthenticated = computed(() => !!page.props.auth?.user);
 
 const showingNavigationDropdown = ref(false);
 </script>
@@ -31,6 +35,18 @@ const showingNavigationDropdown = ref(false);
                             <div
                                 class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex"
                             >
+                                <NavLink
+                                    v-if="isAuthenticated"
+                                    :href="route('books.index')"
+                                >
+                                    Books
+                                </NavLink>
+                                <NavLink
+                                    v-if="isAuthenticated && isAdmin"
+                                    :href="route('books.create')"
+                                >
+                                    Add Book
+                                </NavLink>
                                 <NavLink
                                     :href="route('dashboard')"
                                     :active="route().current('dashboard')"
@@ -137,6 +153,19 @@ const showingNavigationDropdown = ref(false);
                     }"
                     class="sm:hidden"
                 >
+                    <div class="space-y-1 pb-3 pt-2">
+                        <ResponsiveNavLink :href="route('books.index')">
+                            Books
+                        </ResponsiveNavLink>
+                    </div>
+                    <div class="space-y-1 pb-3 pt-2">
+                        <ResponsiveNavLink
+                            v-if="isAuthenticated && isAdmin"
+                            :href="route('books.create')"
+                        >
+                            Add Book
+                        </ResponsiveNavLink>
+                    </div>
                     <div class="space-y-1 pb-3 pt-2">
                         <ResponsiveNavLink
                             :href="route('dashboard')"

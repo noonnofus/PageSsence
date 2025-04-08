@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 
 Route::get('/books', [BookController::class, 'index']);
 
-Route::get('/books/search', [BookController::class, 'findByName']);
+// Route::get('/books/search', [BookController::class, 'findByName']);
 
 Route::get('/book/{id}', [BookController::class, 'show']); 
 

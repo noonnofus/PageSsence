@@ -33,6 +33,9 @@ Route::middleware(['auth'])->prefix('api')->group(function () {
     //search bar
     Route::get('/books/search', [BookController::class, 'findByName']);
 
+    // filter by genre
+    Route::get('/books/filter-by-genre', [BookController::class, 'filterByGenre']);
+
     Route::post('/book/create', [BookController::class, 'store']);
 
     Route::post('/book/save', [BookController::class, 'save']);

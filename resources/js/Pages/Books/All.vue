@@ -37,6 +37,20 @@ const responsiveOptions = ref([
     },
 ]);
 
+const genres = [
+    { name: "Fiction" },
+    { name: "Non-fiction" },
+    { name: "Science Fiction" },
+    { name: "Mystery" },
+    { name: "Biography" },
+    { name: "Historical" },
+    { name: "Poetry" },
+    { name: "Novel" },
+    { name: "Children" },
+    { name: "Drama" },
+    { name: "Other" },
+];
+
 const isAdmin = computed(() => page.props.auth?.user?.role === "admin");
 
 const page = usePage();
@@ -58,6 +72,8 @@ const averageRating = ref(null);
 const userRating = ref(0);
 const conversationHistory = ref([]);
 const searchQuery = ref("");
+const selectedGenre = ref(null);
+const allBooks = ref(props.allBook);
 
 watch(searchQuery, () => {
     first.value = 0;
@@ -135,9 +151,9 @@ const openBookModal = async (bookId) => {
 };
 
 const filteredBooks = computed(() => {
-    if (!searchQuery.value.trim()) return props.allBook;
+    if (!searchQuery.value.trim()) return allBooks.value;
 
-    return props.allBook.filter((book) =>
+    return allBooks.filter((book) =>
         [book.title, book.author].some((field) =>
             field?.toLowerCase().includes(searchQuery.value.toLowerCase())
         )
@@ -147,6 +163,17 @@ const filteredBooks = computed(() => {
 const paginatedBooks = computed(() => {
     return filteredBooks.value.slice(first.value, first.value + rows);
 });
+
+const onFilterChange = async (genre) => {
+    try {
+        const res = await fetch(`/api/books/filter-by-genre?genre=${genre}`);
+        const data = await res.json();
+        allBooks.value = data;
+        first.value = 0;
+    } catch (err) {
+        console.error("Genre filter error:", err);
+    }
+};
 
 const closeBookModal = () => {
     showModal.value = false;
@@ -387,10 +414,10 @@ const deleteReview = async (id) => {
             >
                 <template
                     #item="slotProps"
-                    @click="openBookModal(slotProps.data.id)"
                     class="cursor-pointer mx-0 shadow-md border border-gray-200 rounded-lg flex flex-col justify-between hover:shadow-lg transition"
                 >
                     <div
+                        @click="openBookModal(slotProps.data.id)"
                         class="border border-surface-200 dark:border-surface-700 rounded m-2 p-4"
                     >
                         <h3
@@ -484,6 +511,15 @@ const deleteReview = async (id) => {
                 v-model="searchQuery"
                 class="w-full md:w-1/2 border border-gray-300 rounded px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 placeholder="Search by title or author"
+            />
+            <Dropdown
+                v-model="selectedGenre"
+                :options="genres"
+                optionLabel="name"
+                optionValue="name"
+                placeholder="Select a Genre"
+                class="ml-4 w-48"
+                @change="(e) => onFilterChange(e.value)"
             />
         </div>
         <div

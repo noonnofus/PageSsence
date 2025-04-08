@@ -46,6 +46,17 @@ class BookController extends Controller
         return response()->json($books);
     }
 
+    public function filterByGenre(Request $request)
+    {
+        $genre = $request->query('genre');
+
+        $books = Book::when($genre, fn($query) =>
+            $query->where('genre', $genre)
+        )->get();
+
+        return response()->json($books);
+    }
+
     public function create() {
         Gate::authorize('viewAny', Book::class);
 

@@ -19,11 +19,30 @@ onMounted(() => {
     }
 });
 
+const responsiveOptions = ref([
+    {
+        breakpoint: "1400px",
+        numVisible: 4,
+        numScroll: 1,
+    },
+    {
+        breakpoint: "1024px",
+        numVisible: 2,
+        numScroll: 1,
+    },
+    {
+        breakpoint: "767px",
+        numVisible: 1,
+        numScroll: 1,
+    },
+]);
+
 const isAdmin = computed(() => page.props.auth?.user?.role === "admin");
 
 const page = usePage();
 const toast = useToast();
 const props = defineProps({
+    user: Array,
     canLogin: Boolean,
     canRegister: Boolean,
     laravelVersion: String,
@@ -31,14 +50,13 @@ const props = defineProps({
     books: Array,
     allBook: Array,
 });
-
 const todaysBook = props.books.length > 0 ? props.books[0] : null;
 
 const showModal = ref(false);
 const selectedBook = ref(null);
 const averageRating = ref(null);
 const userRating = ref(0);
-
+const conversationHistory = ref([]);
 const searchQuery = ref("");
 
 watch(searchQuery, () => {
@@ -59,9 +77,22 @@ const editBook = ref({
     description: "",
 });
 
+const editReviewModal = ref(false);
+const editReview = ref({
+    id: null,
+    user_id: null,
+    book_id: null,
+    message: "",
+});
+
 const openEditModal = (book) => {
     editBook.value = { ...book };
     editModal.value = true;
+};
+
+const openReviewEditModal = (message) => {
+    message.editMode = true;
+    editReview.value = { ...message };
 };
 
 const onPageChange = (event) => {
@@ -72,9 +103,21 @@ const fetchAverageRating = async (bookId) => {
     try {
         const res = await fetch(`/api/book/${bookId}/rating`);
         const data = await res.json();
+
         averageRating.value = data.average;
     } catch (err) {
         console.error("Error getting star rate:", err);
+    }
+};
+
+const fetchBookReview = async (bookId) => {
+    try {
+        const res = await fetch(`/api/book/${bookId}/review`);
+        const data = await res.json();
+
+        conversationHistory.value = data.reviews;
+    } catch (err) {
+        console.error("Error getting reviews:", err);
     }
 };
 
@@ -84,6 +127,7 @@ const openBookModal = async (bookId) => {
         const data = await response.json();
         selectedBook.value = data;
         await fetchAverageRating(bookId);
+        await fetchBookReview(bookId);
         showModal.value = true;
     } catch (error) {
         console.error("Failed to fetch book:", error);
@@ -107,6 +151,7 @@ const paginatedBooks = computed(() => {
 const closeBookModal = () => {
     showModal.value = false;
     selectedBook.value = null;
+    editReviewModal.value = false;
 
     const url = new URL(window.location.href);
     url.searchParams.delete("show");
@@ -188,6 +233,44 @@ const submitRating = async () => {
     }
 };
 
+const submitReview = async (message) => {
+    if (!message) return;
+    console.log(message);
+    try {
+        const res = await fetch(`/api/review/update/${message.id}`, {
+            method: "PUT",
+            credentials: "include",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": page.props.csrf_token,
+                Accept: "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+            },
+            body: JSON.stringify(message),
+        });
+
+        if (!res.ok) throw new Error("Review editing failed");
+
+        const data = await res.json();
+
+        toast.add({
+            severity: "success",
+            summary: data.message,
+            life: 3000,
+        });
+
+        await fetchBookReview(message.book_id);
+        message.editMode = false;
+    } catch (error) {
+        toast.add({
+            severity: "error",
+            summary: "Review editing failed",
+            detail: error.message,
+            life: 3000,
+        });
+    }
+};
+
 const saveBook = async () => {
     if (!selectedBook) return;
 
@@ -204,8 +287,6 @@ const saveBook = async () => {
             },
             body: JSON.stringify({ bookId: selectedBook.value.id }),
         });
-
-        console.log(await res);
 
         if (!res.ok) throw new Error("Failed to save book");
 
@@ -225,59 +306,119 @@ const saveBook = async () => {
         });
     }
 };
+
+async function sendMessage({ valid, values }) {
+    if (!valid) return;
+
+    if (values.reviewMessage === null) {
+        toast.add({
+            severity: "error",
+            summary: "Please type something to submit the message!",
+            life: 4000,
+        });
+    }
+
+    const res = await fetch("/api/review/create", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": page.props.csrf_token,
+            // prettier-ignore
+            "Accept": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({
+            message: values.reviewMessage,
+            book_id: selectedBook.value.id,
+        }),
+    });
+
+    if (!res.ok) throw new Error("Failed to create book");
+
+    toast.add({
+        severity: "success",
+        summary: "Review created successfully!",
+        life: 3000,
+    });
+
+    await fetchBookReview(selectedBook.value.id);
+}
+
+const deleteReview = async (id) => {
+    try {
+        console.log(id);
+        const res = await fetch(`/api/review/delete/${id}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers: {
+                "X-CSRF-TOKEN": page.props.csrf_token,
+                // prettier-ignore
+                "Accept": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+            },
+        });
+
+        if (!res.ok) throw new Error("Failed to unsave book");
+
+        toast.add({
+            severity: "success",
+            summary: "Review deleted successfully!",
+            life: 3000,
+        });
+
+        await fetchBookReview(selectedBook.value.id);
+    } catch (err) {
+        console.error("Error while unsaving book:", err);
+    }
+};
 </script>
 
 <template>
     <Head title="Books" />
     <DefaultLayout :canLogin="canLogin" :canRegister="canRegister">
         <h2 class="text-4xl font-bold mb-6">Latest Books</h2>
-        <Carousel
-            :value="props.books"
-            :numVisible="4"
-            :numScroll="1"
-            :circular="true"
-            :autoplayInterval="5000"
-            class="px-6"
-        >
-            <template #item="slotProps">
-                <Card
+        <div class="card">
+            <Carousel
+                :value="props.books"
+                :responsiveOptions="responsiveOptions"
+                :numVisible="3"
+                :numScroll="3"
+            >
+                <template
+                    #item="slotProps"
                     @click="openBookModal(slotProps.data.id)"
-                    class="cursor-pointer h-[400px] w-full mx-2 shadow-md border border-gray-200 rounded-lg flex flex-col justify-between hover:shadow-lg transition"
+                    class="cursor-pointer mx-0 shadow-md border border-gray-200 rounded-lg flex flex-col justify-between hover:shadow-lg transition"
                 >
-                    <template #title>
-                        <h3 class="font-semibold text-lg truncate">
+                    <div
+                        class="border border-surface-200 dark:border-surface-700 rounded m-2 p-4"
+                    >
+                        <h3
+                            class="font-semibold text-lg w-full overflow-hidden whitespace-nowrap text-ellipsis"
+                            style="width: 230px"
+                        >
                             {{ slotProps.data.title }}
                         </h3>
-                    </template>
-
-                    <template #content>
-                        <img
-                            :src="
-                                slotProps.data.cover_image_url ||
-                                '/default-cover.jpeg'
-                            "
-                            alt="Book Cover"
-                            class="w-full h-60 object-cover rounded-md"
-                        />
-                        <p class="mt-2 text-sm text-gray-600 line-clamp-3">
-                            by
-                            <span class="underline">{{
-                                slotProps.data.author
-                            }}</span>
-                        </p>
-                    </template>
-                    <template #footer v-if="isAdmin">
-                        <Button
-                            icon="pi pi-pencil"
-                            label="Edit"
-                            class="px-2 py-1 text-sm"
-                            severity="warning"
-                            @click.stop="openEditModal(book)"
-                        />
-                    </template>
-                </Card>
-            </template>
-        </Carousel>
+                        <div>
+                            <img
+                                :src="
+                                    slotProps.data.cover_image_url ||
+                                    '/default-cover.jpeg'
+                                "
+                                alt="Book Cover"
+                                class="w-full h-60 object-cover rounded-md"
+                            />
+                            <p class="mt-2 text-sm text-gray-600 line-clamp-3">
+                                by
+                                <span class="underline">{{
+                                    slotProps.data.author
+                                }}</span>
+                            </p>
+                        </div>
+                    </div>
+                </template>
+            </Carousel>
+        </div>
 
         <div v-if="todaysBook" class="mt-16 px-6">
             <h2 class="text-4xl font-bold mb-6 text-center">Today's Book</h2>
@@ -471,35 +612,147 @@ const saveBook = async () => {
                     </div>
                 </div>
             </div>
-            <div
-                class="mt-4 flex flex-col md:flex-row items-center justify-between gap-6"
-            >
-                <div class="flex items-center gap-2">
+            <div class="py-3">
+                <h2 class="text-2xl">Reviews</h2>
+            </div>
+            <div class="mt-4 w-full flex flex-row gap-6 h-[87vh]">
+                <div
+                    class="flex flex-col flex-grow basis-1/3 items-center justify-start gap-4"
+                >
                     <Rate
                         v-if="averageRating !== null"
                         :rating="averageRating"
                     />
+                    <div>
+                        <h4 class="font-semibold mb-1">Rate this book:</h4>
+                        <AddRate v-model="userRating" />
+                        <p class="text-sm text-gray-500 mt-1">
+                            {{
+                                userRating
+                                    ? `${userRating} / 5`
+                                    : "Select a rating"
+                            }}
+                        </p>
+                        <Button
+                            label="Submit Rating"
+                            icon="pi pi-check"
+                            class="mt-2 px-3 py-1 text-sm"
+                            severity="info"
+                            @click="submitRating"
+                            :disabled="!userRating"
+                        />
+                    </div>
                 </div>
 
-                <div class="flex flex-col items-center md:items-end">
-                    <h4 class="font-semibold mb-1">Rate this book:</h4>
-                    <AddRate v-model="userRating" />
-                    <p class="text-sm text-gray-500 mt-1">
-                        {{
-                            userRating ? `${userRating} / 5` : "Select a rating"
-                        }}
-                    </p>
-                    <Button
-                        label="Submit Rating"
-                        icon="pi pi-check"
-                        class="mt-2 px-3 py-1 text-sm"
-                        severity="info"
-                        @click="submitRating"
-                        :disabled="!userRating"
-                    />
+                <div
+                    class="flex flex-col flex-grow basis-2/3 h-full border-l pl-6"
+                >
+                    <div class="flex flex-col h-full overflow-y-auto space-y-4">
+                        <div
+                            v-if="conversationHistory.length > 0"
+                            v-for="(message, index) in conversationHistory"
+                            :key="index"
+                            class="max-w-lg mx-auto text-white"
+                        >
+                            <div
+                                class="flex items-center justify-between rounded-lg shadow-md p-2 px-3 w-fit max-w-[75%] sm:max-w-full"
+                                :class="{
+                                    'bg-green-400 self-end':
+                                        message.user_id === user.id,
+                                    'bg-gray-500 self-start':
+                                        message.user_id !== user.id,
+                                }"
+                            >
+                                <p
+                                    v-if="!message.editMode"
+                                    class="break-words whitespace-pre-line"
+                                >
+                                    {{ message.message }}
+                                </p>
+                                <input
+                                    v-else
+                                    v-model="message.message"
+                                    type="text"
+                                    class="form-control form-control-sm w-full rounded px-3 py-1 text-sm text-black"
+                                    aria-label="Edit Message"
+                                />
+                                <div>
+                                    <Button
+                                        v-if="
+                                            !message.editMode &&
+                                            message.user_id === user.id
+                                        "
+                                        icon="pi pi-pencil"
+                                        class="text-xs"
+                                        style="
+                                            background-color: transparent;
+                                            border: none;
+                                        "
+                                        @click.stop="
+                                            openReviewEditModal(message)
+                                        "
+                                    />
+                                    <Button
+                                        v-if="
+                                            !message.editMode &&
+                                            message.user_id === user.id
+                                        "
+                                        icon="pi pi-trash"
+                                        class="text-xs"
+                                        style="
+                                            background-color: transparent;
+                                            border: none;
+                                        "
+                                        @click.stop="deleteReview(message.id)"
+                                    />
+                                </div>
+                                <Button
+                                    v-if="
+                                        message.editMode &&
+                                        message.user_id === user.id
+                                    "
+                                    icon="pi pi-check"
+                                    class="text-xs"
+                                    style="
+                                        background-color: transparent;
+                                        border: none;
+                                    "
+                                    @click="submitReview(message)"
+                                />
+                            </div>
+                        </div>
+
+                        <div v-else>
+                            <span class="text-gray-400 ml-5"
+                                >Feel free to share your thoughts about the
+                                book!</span
+                            >
+                        </div>
+                    </div>
+                    <Form
+                        v-slot="$form"
+                        :resolver="resolver"
+                        :initialValues="initialValues"
+                        @submit="sendMessage"
+                        class="flex mt-4 space-x-2"
+                    >
+                        <Textarea
+                            name="reviewMessage"
+                            placeholder="Share your thoughts..."
+                            class="w-full px-2 py-1 rounded-md border-2 border-blue-300"
+                        />
+                        <Button
+                            label="Send"
+                            icon="pi pi-send"
+                            class="px-2"
+                            type="submit"
+                        />
+                    </Form>
                 </div>
             </div>
         </Dialog>
+
+        <!-- edit Dialog -->
         <Dialog
             v-model:visible="editModal"
             modal
@@ -553,3 +806,5 @@ const saveBook = async () => {
         </Dialog>
     </DefaultLayout>
 </template>
+
+<!-- { "id": 1, "name": "Christop Block", "email": "abernathy.dell@example.com", "email_verified_at": "2025-03-26T02:11:46.000000Z", "created_at": "2025-03-26T02:11:47.000000Z", "updated_at": "2025-03-26T02:11:47.000000Z", "role": "admin" } -->

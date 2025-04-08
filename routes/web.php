@@ -29,7 +29,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/books/create', [BookController::class, 'create'])->name('books.create');
 });
 
-// routes/web.php
 Route::middleware(['auth'])->prefix('api')->group(function () {
     //search bar
     Route::get('/books/search', [BookController::class, 'findByName']);
@@ -43,8 +42,17 @@ Route::middleware(['auth'])->prefix('api')->group(function () {
     Route::delete('/book/unsave/{book}', [BookController::class, 'unsave']);
 
     Route::get('/book/{id}/rating', [BookController::class, 'getAverageRating']);
-
+    
     Route::post('/book/rate', [BookController::class, 'storeRate']);
+
+    Route::post('/review/create', [BookController::class, 'storeReview']);
+    
+    // Review editing
+    Route::put('/review/update/{id}', [BookController::class, 'editReview']);
+    
+    Route::get('/book/{id}/review', [BookController::class, 'getReviews']);
+
+    Route::delete('/review/delete/{id}', [BookController::class, 'deleteReview']);
 });
 
 

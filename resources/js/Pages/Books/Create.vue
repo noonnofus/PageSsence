@@ -68,8 +68,6 @@ const onFormSubmit = async ({ valid, values }) => {
             body: JSON.stringify(values),
         });
 
-        console.log(await res);
-
         if (!res.ok) throw new Error("Failed to create book");
 
         toast.add({

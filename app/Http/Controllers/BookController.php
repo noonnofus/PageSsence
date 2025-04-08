@@ -12,10 +12,13 @@ use Inertia\Inertia;
 use App\Models\Book;
 use App\Models\UserBook;
 use App\Models\BookRate;
+use App\Models\BookChat;
 
 class BookController extends Controller
 {
     public function index() {
+        $user = Auth::user();
+
         Gate::authorize('viewAny', Book::class);
 
         $books = Book::latest()->take(10)->get();
@@ -23,6 +26,7 @@ class BookController extends Controller
         $allBook = Book::latest()->get();
 
         return Inertia::render('Books/All', [
+            'user' => $user,
             'books' => $books,
             'allBook' => $allBook,
             'canLogin' => Route::has('login'),
@@ -157,6 +161,15 @@ class BookController extends Controller
             'average' => $average,
         ]);
     }
+    
+    public function getReviews($id)
+    {
+        $reviews = BookChat::where('book_id', (int)$id)->get();
+
+        return response()->json([
+            'reviews' => $reviews,
+        ]);
+    }
 
     public function storeRate(Request $request)
     {
@@ -184,4 +197,56 @@ class BookController extends Controller
         return response()->json(['message' => 'Thanks for rating!']);
     }
 
+    public function storeReview(Request $req)
+    {
+        $user = Auth::user();
+        
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $validated = $req->validate([
+            'book_id' => 'required|exists:books,id',
+            'message' => 'required|string|max:255',
+        ]);
+
+        $validated['book_id'] = (int) $validated['book_id'];
+        $validated['user_id'] = $user->id;
+
+        $book = BookChat::create($validated);
+
+        return response()->json([
+            'message' => 'Review created successfully!',
+        ], 201);
+    }
+
+    public function editReview(Request $req, $id)
+    {
+        $review = BookChat::findOrFail($id);
+
+        $validated = $req->validate([
+            'id' => 'required|integer',
+            'user_id' => 'required',
+            'book_id' => 'required',
+            'message' => 'required|string',
+            'created_at' => 'nullable|date',
+            'updated_at' => 'nullable|date',
+        ]);
+
+        $validated['user_id'] = (int) $validated['user_id'];
+        $validated['book_id'] = (int) $validated['book_id'];
+
+        $review->update($validated);
+
+        return response()->json(['message' => 'Review updated successfully']);
+    }
+
+    public function deleteReview(Request $req, $id)
+    {
+        $review = BookChat::findOrFail($id);
+
+        $review->delete();
+
+        return response()->json(['message' => 'Review successfully deleted.']);
+    }
 }

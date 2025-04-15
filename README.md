@@ -1,8 +1,10 @@
 # PageSsence: The Book Review Platform
 
 ![Laravel](https://img.shields.io/badge/laravel-%23FF2D20.svg?style=for-the-badge&logo=laravel&logoColor=white)
+![Inertia.js](https://img.shields.io/badge/inertia.js-%234B4B4B.svg?style=for-the-badge&logoColor=white)
 ![Vue.js](https://img.shields.io/badge/vuejs-%2335495e.svg?style=for-the-badge&logo=vue.js&logoColor=%234FC08D)
-![PrimeVue](https://img.shields.io/badge/primevue-%23007396.svg?style=for-the-badge&logo=prime&logoColor=white)
+![PrimeVue](https://img.shields.io/badge/primevue-%23007396.svg?style=for-the-badge&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
 ![MySQL](https://img.shields.io/badge/mysql-%2300758F.svg?style=for-the-badge&logo=mysql&logoColor=white)
 ![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
 
